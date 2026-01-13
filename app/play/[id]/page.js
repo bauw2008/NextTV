@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Player } from "../../../components/Artplayer";
@@ -18,6 +18,9 @@ export default function PlayerPage() {
   const [error, setError] = useState(null);
   const [currentEpisodeIndex, setCurrentEpisodeIndex] = useState(0);
   const [episodesCollapsed, setEpisodesCollapsed] = useState(false);
+
+  // 播放器引用
+  const playerRef = useRef(null);
 
   // 获取视频详情
   useEffect(() => {
@@ -60,6 +63,106 @@ export default function PlayerPage() {
   const handleEpisodeClick = (index) => {
     setCurrentEpisodeIndex(index);
   };
+
+  // 处理全局快捷键
+  const handleKeyboardShortcuts = useCallback(
+    (e) => {
+      // 忽略输入框中的按键事件
+      if (
+        e.target.tagName === "INPUT" ||
+        e.target.tagName === "TEXTAREA"
+      )
+        return;
+
+      // Alt + 左箭头 = 上一集
+      if (e.altKey && e.key === "ArrowLeft") {
+        if (videoDetail && currentEpisodeIndex > 0) {
+          setCurrentEpisodeIndex(currentEpisodeIndex - 1);
+          e.preventDefault();
+        }
+      }
+
+      // Alt + 右箭头 = 下一集
+      if (e.altKey && e.key === "ArrowRight") {
+        if (
+          videoDetail &&
+          videoDetail.episodes &&
+          currentEpisodeIndex < videoDetail.episodes.length - 1
+        ) {
+          setCurrentEpisodeIndex(currentEpisodeIndex + 1);
+          e.preventDefault();
+        }
+      }
+
+      // 左箭头 = 快退
+      if (!e.altKey && e.key === "ArrowLeft") {
+        if (playerRef.current && playerRef.current.currentTime > 5) {
+          playerRef.current.currentTime -= 10;
+          e.preventDefault();
+        }
+      }
+
+      // 右箭头 = 快进
+      if (!e.altKey && e.key === "ArrowRight") {
+        if (
+          playerRef.current &&
+          playerRef.current.currentTime < playerRef.current.duration - 5
+        ) {
+          playerRef.current.currentTime += 10;
+          e.preventDefault();
+        }
+      }
+
+      // 上箭头 = 音量+
+      if (e.key === "ArrowUp") {
+        if (playerRef.current && playerRef.current.volume < 1) {
+          playerRef.current.volume =
+            Math.round((playerRef.current.volume + 0.1) * 10) / 10;
+          playerRef.current.notice.show = `音量: ${Math.round(
+            playerRef.current.volume * 100
+          )}`;
+          e.preventDefault();
+        }
+      }
+
+      // 下箭头 = 音量-
+      if (e.key === "ArrowDown") {
+        if (playerRef.current && playerRef.current.volume > 0) {
+          playerRef.current.volume =
+            Math.round((playerRef.current.volume - 0.1) * 10) / 10;
+          playerRef.current.notice.show = `音量: ${Math.round(
+            playerRef.current.volume * 100
+          )}`;
+          e.preventDefault();
+        }
+      }
+
+      // 空格 = 播放/暂停
+      if (e.key === " ") {
+        if (playerRef.current) {
+          playerRef.current.toggle();
+          e.preventDefault();
+        }
+      }
+
+      // f 键 = 切换全屏
+      if (e.key === "f" || e.key === "F") {
+        if (playerRef.current) {
+          playerRef.current.fullscreen = !playerRef.current.fullscreen;
+          e.preventDefault();
+        }
+      }
+    },
+    [videoDetail, currentEpisodeIndex]
+  );
+
+  // 监听键盘事件
+  useEffect(() => {
+    document.addEventListener("keydown", handleKeyboardShortcuts);
+    return () => {
+      document.removeEventListener("keydown", handleKeyboardShortcuts);
+    };
+  }, [handleKeyboardShortcuts]);
 
   // 计算当前剧集信息（放在条件返回之前以保证 Hooks 顺序一致）
   const currentEpisodeUrl = videoDetail?.episodes?.[currentEpisodeIndex] || "";
@@ -151,9 +254,9 @@ export default function PlayerPage() {
         </ol>
       </nav>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className={`grid grid-cols-1 gap-8 transition-all duration-300 lg:grid-cols-12`}>
         {/* Left Column: Player and Info */}
-        <div className="lg:col-span-8 flex flex-col gap-8">
+        <div className={`flex flex-col gap-8 transition-all duration-300 lg:col-span-8`}>
           <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl group ring-1 ring-gray-900/5">
             {currentEpisodeUrl ? (
               <Player
@@ -163,6 +266,9 @@ export default function PlayerPage() {
                   height: "100%",
                 }}
                 className="w-full h-full"
+                getInstance={(art) => {
+                  playerRef.current = art;
+                }}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-white">
@@ -266,7 +372,7 @@ export default function PlayerPage() {
         </div>
 
         {/* Right Column: Episodes */}
-        <div className="lg:col-span-4 space-y-6">
+        <div className={`space-y-6 transition-all duration-300 lg:col-span-4`}>
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden sticky top-28">
             <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
               <h3 className="font-bold text-gray-900 text-lg">选集</h3>

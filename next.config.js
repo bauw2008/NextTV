@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
+  reactStrictMode: false,
+  reactCompiler: true,
   env: {
     API_KEY: process.env.API_KEY,
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
@@ -8,12 +9,12 @@ const nextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: '**.doubanio.com',
+        protocol: "https",
+        hostname: "**.doubanio.com",
       },
       {
-        protocol: 'https',
-        hostname: 'lh3.googleusercontent.com',
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
       },
     ],
   },
