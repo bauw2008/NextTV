@@ -37,7 +37,7 @@ export const MovieCard = ({ movie }) => {
           aria-label={`Poster for ${movie.title}`}
         ></div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
-          <button className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-2 rounded-lg flex items-center justify-center gap-2 text-sm shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+          <button className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-2 rounded-lg flex items-center justify-center gap-2 text-sm shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 cursor-pointer">
             <span className="material-symbols-outlined text-[18px]">
               play_arrow
             </span>{" "}
