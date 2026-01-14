@@ -10,6 +10,16 @@ export const useSettingsStore = create(
       videoSources: DEFAULT_VIDEO_SOURCES,
       danmakuSources: DEFAULT_DANMAKU_SOURCES,
 
+      // 播放器配置
+      blockAdEnabled: true,
+      skipConfig: { enable: false, intro_time: 0, outro_time: 0 },
+
+      // 设置去广告开关
+      setBlockAdEnabled: (enabled) => set({ blockAdEnabled: enabled }),
+
+      // 设置跳过配置
+      setSkipConfig: (config) => set({ skipConfig: config }),
+
       toggleSource: (id, type) => set((state) => {
         const key = type === 'video' ? 'videoSources' : 'danmakuSources';
         return {

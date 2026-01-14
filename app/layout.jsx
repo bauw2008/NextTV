@@ -1,22 +1,16 @@
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { Noto_Serif_SC, Inter } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 
-// 英文字体：Inter（风格类似 Google Sans）
-const inter = Inter({
-  weight: ["400", "500", "600", "700"],
+const geistSans = Geist({
+  variable: "--font-geist-sans",
   subsets: ["latin"],
-  display: "swap",
-  variable: "--font-inter",
 });
 
-// 中文字体：Noto Serif SC
-const notoSerifSC = Noto_Serif_SC({
-  weight: ["400", "500", "600", "700"],
-  subsets: ["latin", "chinese-simplified"],
-  display: "swap",
-  variable: "--font-noto-serif-sc",
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
 });
 
 export const metadata = {
@@ -30,7 +24,10 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="zh-CN" className={`${inter.variable} ${notoSerifSC.variable}`}>
+    <html
+      lang="zh-CN"
+      className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+    >
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link

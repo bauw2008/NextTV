@@ -66,33 +66,10 @@ export default function PlayerPage() {
   const danmakuPluginRef = useRef(null); // 弹幕插件实例引用
   const hasLoadedFirstDanmaku = useRef(false); // 追踪是否已首次加载弹幕
 
-  // 配置状态引用（避免重新渲染）
-  const blockAdEnabledRef = useRef(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("enable_blockad");
-      return saved !== null ? saved === "true" : true;
-    }
-    return true;
-  });
-  const skipConfigRef = useRef(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("skip_config");
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {
-          return { enable: false, intro_time: 0, outro_time: 0 };
-        }
-      }
-    }
-    return { enable: false, intro_time: 0, outro_time: 0 };
-  });
-
   // 跳过检查的时间间隔控制
   const lastSkipCheckRef = useRef(0);
 
   // 播放进度相关
-  const saveIntervalRef = useRef(null);
   const lastSaveTimeRef = useRef(0);
 
   // 用于记录是否需要在播放器 ready 后跳转到指定进度
@@ -107,21 +84,29 @@ export default function PlayerPage() {
   const lastVolumeRef = useRef(0.7);
   const lastPlaybackRateRef = useRef(1.0);
 
-  // 数据引用（用于事件回调中访问最新值）
-  const videoDetailRef = useRef(videoDetail);
-  const currentEpisodeIndexRef = useRef(currentEpisodeIndex);
-
-  useEffect(() => {
-    videoDetailRef.current = videoDetail;
-    currentEpisodeIndexRef.current = currentEpisodeIndex;
-  }, [videoDetail, currentEpisodeIndex]);
-
   // -------------------------------------------------------------------------
   // Store
   // -------------------------------------------------------------------------
   const addPlayRecord = usePlayHistoryStore((state) => state.addPlayRecord);
   const getPlayRecord = usePlayHistoryStore((state) => state.getPlayRecord);
   const danmakuSources = useSettingsStore((state) => state.danmakuSources);
+  const blockAdEnabled = useSettingsStore((state) => state.blockAdEnabled);
+  const setBlockAdEnabled = useSettingsStore((state) => state.setBlockAdEnabled);
+  const skipConfig = useSettingsStore((state) => state.skipConfig);
+  const setSkipConfig = useSettingsStore((state) => state.setSkipConfig);
+
+  // 数据引用（用于事件回调中访问最新值）
+  const videoDetailRef = useRef(videoDetail);
+  const currentEpisodeIndexRef = useRef(currentEpisodeIndex);
+  const blockAdEnabledRef = useRef(blockAdEnabled);
+  const skipConfigRef = useRef(skipConfig);
+
+  useEffect(() => {
+    videoDetailRef.current = videoDetail;
+    currentEpisodeIndexRef.current = currentEpisodeIndex;
+    blockAdEnabledRef.current = blockAdEnabled;
+    skipConfigRef.current = skipConfig;
+  }, [videoDetail, currentEpisodeIndex, blockAdEnabled, skipConfig]);
 
   // -------------------------------------------------------------------------
   // 计算当前剧集信息
@@ -134,38 +119,6 @@ export default function PlayerPage() {
   // -------------------------------------------------------------------------
   // 辅助函数
   // -------------------------------------------------------------------------
-
-  // 初始化配置引用
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedBlockAd = localStorage.getItem("enable_blockad");
-      blockAdEnabledRef.current =
-        savedBlockAd !== null ? savedBlockAd === "true" : true;
-
-      const savedSkipConfig = localStorage.getItem("skip_config");
-      if (savedSkipConfig) {
-        try {
-          skipConfigRef.current = JSON.parse(savedSkipConfig);
-        } catch {
-          skipConfigRef.current = {
-            enable: false,
-            intro_time: 0,
-            outro_time: 0,
-          };
-        }
-      } else {
-        skipConfigRef.current = { enable: false, intro_time: 0, outro_time: 0 };
-      }
-    }
-  }, []);
-
-  // 保存跳过配置到 localStorage
-  const saveSkipConfig = (config) => {
-    skipConfigRef.current = config;
-    if (typeof window !== "undefined") {
-      localStorage.setItem("skip_config", JSON.stringify(config));
-    }
-  };
 
   // 保存播放进度函数
   // 参数 episodeIndex: 可选，指定要保存的集数索引，如果不传则使用当前正在播放的集数
@@ -560,11 +513,7 @@ export default function PlayerPage() {
             switch: blockAdEnabledRef.current,
             onSwitch: function (item) {
               const newVal = !item.switch;
-              blockAdEnabledRef.current = newVal;
-
-              if (typeof window !== "undefined") {
-                localStorage.setItem("enable_blockad", String(newVal));
-              }
+              setBlockAdEnabled(newVal);
 
               if (artPlayerRef.current) {
                 artPlayerRef.current.notice.show = newVal
@@ -584,7 +533,7 @@ export default function PlayerPage() {
                 ...skipConfigRef.current,
                 enable: !item.switch,
               };
-              saveSkipConfig(newConfig);
+              setSkipConfig(newConfig);
 
               if (artPlayerRef.current) {
                 artPlayerRef.current.notice.show = newConfig.enable
@@ -610,7 +559,7 @@ export default function PlayerPage() {
                     ...skipConfigRef.current,
                     intro_time: currentTime,
                   };
-                  saveSkipConfig(newConfig);
+                  setSkipConfig(newConfig);
                   artPlayerRef.current.notice.show = `片头已设置：${formatTime(
                     currentTime
                   )}`;
@@ -638,7 +587,7 @@ export default function PlayerPage() {
                     ...skipConfigRef.current,
                     outro_time: outroTime,
                   };
-                  saveSkipConfig(newConfig);
+                  setSkipConfig(newConfig);
                   artPlayerRef.current.notice.show = `片尾已设置：${formatTime(
                     -outroTime
                   )}`;
@@ -652,7 +601,7 @@ export default function PlayerPage() {
             icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 18L18 6M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
             onClick: function () {
               const newConfig = { enable: false, intro_time: 0, outro_time: 0 };
-              saveSkipConfig(newConfig);
+              setSkipConfig(newConfig);
 
               if (artPlayerRef.current) {
                 artPlayerRef.current.notice.show = "跳过配置已清除";
@@ -1033,9 +982,6 @@ export default function PlayerPage() {
   // -------------------------------------------------------------------------
   useEffect(() => {
     return () => {
-      if (saveIntervalRef.current) {
-        clearInterval(saveIntervalRef.current);
-      }
       cleanupPlayer();
     };
   }, []);
@@ -1082,9 +1028,9 @@ export default function PlayerPage() {
   }
 
   return (
-    <div className="w-full max-w-7xl pt-4">
-      <nav aria-label="Breadcrumb" className="flex mb-6 text-sm text-gray-500">
-        <ol className="inline-flex items-center space-x-1 md:space-x-3">
+    <div className="w-full max-w-7xl pt-4 px-4">
+      <nav aria-label="Breadcrumb" className="flex mb-6 text-sm text-gray-500 overflow-x-auto">
+        <ol className="inline-flex items-center space-x-1 md:space-x-3 whitespace-nowrap">
           <li className="inline-flex items-center">
             <Link
               href="/"
@@ -1111,7 +1057,7 @@ export default function PlayerPage() {
               <span className="material-symbols-outlined text-gray-400">
                 chevron_right
               </span>
-              <span className="ml-1 md:ml-2 text-gray-900 font-medium">
+              <span className="ml-1 md:ml-2 text-gray-900 font-medium truncate max-w-[200px]">
                 {videoDetail.title}
               </span>
             </div>
@@ -1132,7 +1078,7 @@ export default function PlayerPage() {
             )}
           </div>
 
-          <div className="flex flex-col md:flex-row gap-8 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex flex-col md:flex-row gap-8 bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="hidden md:block w-48 shrink-0">
               <div className="aspect-2/3 rounded-xl overflow-hidden shadow-lg ring-1 ring-gray-900/5 relative group">
                 <img
@@ -1142,13 +1088,13 @@ export default function PlayerPage() {
                 />
               </div>
             </div>
-            <div className="flex-1 space-y-5">
+            <div className="flex-1 space-y-5 min-w-0">
               <div>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
-                  <h1 className="text-3xl font-bold text-gray-900">
+                  <h1 className="text-2xl md:text-3xl font-bold text-gray-900 break-words">
                     {videoDetail.title}
                   </h1>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 shrink-0">
                     <div className="flex items-center text-primary h-10">
                       <span className="material-symbols-outlined material-symbols-filled text-xl">
                         star
@@ -1175,11 +1121,11 @@ export default function PlayerPage() {
                     {videoDetail.year}
                   </span>
                   <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                  <span>{videoDetail.genre}</span>
+                  <span className="truncate">{videoDetail.genre}</span>
                   {videoDetail.class && (
                     <>
                       <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                      <span>{videoDetail.type_name}</span>
+                      <span className="truncate">{videoDetail.type_name}</span>
                     </>
                   )}
                   {videoDetail.episodes.length > 1 && (
@@ -1197,21 +1143,21 @@ export default function PlayerPage() {
               {videoDetail.desc && (
                 <div className="prose prose-sm max-w-none text-gray-600">
                   <h3 className="text-gray-900 font-semibold mb-1">剧情简介</h3>
-                  <p className="leading-relaxed">{videoDetail.desc}</p>
+                  <p className="leading-relaxed break-words">{videoDetail.desc}</p>
                 </div>
               )}
               {(doubanActors.length > 0 ||
                 (videoDetail.actors && videoDetail.actors.length > 0)) && (
                 <div>
                   <h3 className="text-gray-900 font-semibold mb-3">演员表</h3>
-                  <div className="flex gap-4 overflow-x-auto pb-2 hide-scrollbar">
+                  <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0">
                     {(doubanActors.length > 0
                       ? doubanActors
                       : videoDetail.actors
                     ).map((actor, idx) => (
                       <div
                         key={actor.id || idx}
-                        className="flex flex-col items-center gap-2 min-w-[70px]"
+                        className="flex flex-col items-center gap-2 min-w-[70px] shrink-0"
                       >
                         <div className="size-16 rounded-full overflow-hidden border border-gray-200 shadow-sm bg-gray-100 flex items-center justify-center">
                           {actor.avatar ? (
