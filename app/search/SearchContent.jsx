@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { MovieCard } from "@/components/MovieCard";
+import { SkeletonCard } from "@/components/SkeletonCard";
 import { SearchBox } from "@/components/SearchBox";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { searchVideos } from "@/lib/cmsApi";
@@ -70,9 +71,10 @@ export default function SearchContent() {
   function renderContent() {
     if (loading) {
       return (
-        <div className="flex flex-col items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary border-t-transparent mb-4"></div>
-          <p className="text-gray-500">正在搜索中...</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+          {Array.from({ length: 12 }).map((_, index) => (
+            <SkeletonCard key={index} />
+          ))}
         </div>
       );
     }
@@ -117,8 +119,10 @@ export default function SearchContent() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-            {filteredResults.map((movie) => (
-              <MovieCard key={`${movie.source}-${movie.id}`} movie={movie} />
+            {filteredResults.map((movie, index) => (
+              <div key={`${movie.source}-${movie.id}`} className="grid-item-animate">
+                <MovieCard movie={movie} />
+              </div>
             ))}
           </div>
         </>
@@ -137,7 +141,7 @@ export default function SearchContent() {
   }
 
   return (
-    <div className="w-full max-w-7xl flex flex-col gap-8 pt-6">
+    <div className="w-full max-w-7xl flex flex-col gap-8 pt-6 page-enter">
       <div className="flex flex-col items-center justify-start gap-6 w-full max-w-3xl mx-auto">
         <SearchBox initialValue={query} />
 
@@ -151,7 +155,7 @@ export default function SearchContent() {
               checked={mediaType === "all"}
               onChange={(e) => setMediaType(e.target.value)}
             />
-            <div className="px-6 py-2 rounded-lg text-sm font-semibold text-gray-500 peer-checked:bg-primary peer-checked:text-white peer-checked:shadow-md transition-all flex items-center gap-2">
+            <div className="media-toggle-btn px-6 py-2 rounded-lg text-sm font-semibold text-gray-500 peer-checked:bg-primary peer-checked:text-white peer-checked:shadow-md flex items-center gap-2">
               <span className="material-symbols-outlined text-[18px]">
                 grid_view
               </span>
@@ -167,7 +171,7 @@ export default function SearchContent() {
               checked={mediaType === "movie"}
               onChange={(e) => setMediaType(e.target.value)}
             />
-            <div className="px-6 py-2 rounded-lg text-sm font-semibold text-gray-500 peer-checked:bg-primary peer-checked:text-white peer-checked:shadow-md transition-all flex items-center gap-2">
+            <div className="media-toggle-btn px-6 py-2 rounded-lg text-sm font-semibold text-gray-500 peer-checked:bg-primary peer-checked:text-white peer-checked:shadow-md flex items-center gap-2">
               <span className="material-symbols-outlined text-[18px]">
                 movie
               </span>
@@ -183,7 +187,7 @@ export default function SearchContent() {
               checked={mediaType === "tv"}
               onChange={(e) => setMediaType(e.target.value)}
             />
-            <div className="px-6 py-2 rounded-lg text-sm font-semibold text-gray-500 peer-checked:bg-primary peer-checked:text-white peer-checked:shadow-md transition-all flex items-center gap-2">
+            <div className="media-toggle-btn px-6 py-2 rounded-lg text-sm font-semibold text-gray-500 peer-checked:bg-primary peer-checked:text-white peer-checked:shadow-md flex items-center gap-2">
               <span className="material-symbols-outlined text-[18px]">tv</span>
               电视剧
             </div>

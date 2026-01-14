@@ -132,7 +132,7 @@ export function Navbar() {
             target="_blank"
             rel="noopener noreferrer"
             aria-label="GitHub"
-            className="flex items-center justify-center size-10 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors"
+            className="flex items-center justify-center size-10 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors btn-press"
           >
             <svg
               aria-hidden="true"
@@ -152,7 +152,7 @@ export function Navbar() {
           <div className="relative" ref={dropdownRef}>
             <button
               aria-label="History"
-              className={`flex items-center justify-center size-10 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer ${
+              className={`flex items-center justify-center size-10 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer btn-press ${
                 showHistoryDropdown ? "bg-gray-100 text-gray-900" : ""
               }`}
               onClick={() => setShowHistoryDropdown(!showHistoryDropdown)}
@@ -162,13 +162,13 @@ export function Navbar() {
 
             {/* Dropdown Menu */}
             {showHistoryDropdown && (
-              <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden z-50">
+              <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden z-50 dropdown-enter">
                 <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
                   <h3 className="font-bold text-gray-900">观看历史</h3>
                   {playHistory.length > 0 && (
                     <button
                       onClick={handleClearAll}
-                      className="text-xs text-red-500 hover:text-red-600 cursor-pointer font-medium"
+                      className="text-xs text-red-500 hover:text-red-600 cursor-pointer font-medium transition-colors btn-press"
                     >
                       清空全部
                     </button>
@@ -229,7 +229,7 @@ export function Navbar() {
 
                           <button
                             onClick={(e) => handleDeleteHistory(e, record)}
-                            className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-50 rounded-lg"
+                            className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-50 rounded-lg btn-press"
                             aria-label="删除"
                           >
                             <span className="material-symbols-outlined text-red-500 text-[18px]">
@@ -249,7 +249,7 @@ export function Navbar() {
           <div className="relative" ref={favoritesDropdownRef}>
             <button
               aria-label="Favorites"
-              className={`flex items-center justify-center size-10 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer ${
+              className={`flex items-center justify-center size-10 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer btn-press ${
                 showFavoritesDropdown ? "bg-gray-100 text-gray-900" : ""
               }`}
               onClick={() => setShowFavoritesDropdown(!showFavoritesDropdown)}
@@ -259,13 +259,13 @@ export function Navbar() {
 
             {/* Favorites Dropdown Menu */}
             {showFavoritesDropdown && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden z-50">
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden z-50 dropdown-enter">
                 <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
                   <h3 className="font-bold text-gray-900">我的收藏</h3>
                   {favorites.length > 0 && (
                     <button
                       onClick={handleClearAllFavorites}
-                      className="text-xs text-red-500 hover:text-red-600 cursor-pointer font-medium"
+                      className="text-xs text-red-500 hover:text-red-600 cursor-pointer font-medium transition-colors btn-press"
                     >
                       清空全部
                     </button>
@@ -312,7 +312,7 @@ export function Navbar() {
 
                           <button
                             onClick={(e) => handleDeleteFavorite(e, favorite)}
-                            className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-50 rounded-lg"
+                            className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-50 rounded-lg btn-press"
                             aria-label="删除"
                           >
                             <span className="material-symbols-outlined text-red-500 text-[18px]">
@@ -330,7 +330,7 @@ export function Navbar() {
 
           <button
             aria-label="Settings"
-            className={`flex items-center justify-center size-10 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer ${
+            className={`flex items-center justify-center size-10 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer btn-press ${
               pathname === "/settings" ? "bg-gray-100 text-gray-900" : ""
             }`}
             onClick={() => router.push("/settings")}

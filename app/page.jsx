@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { MovieCard } from "@/components/MovieCard";
+import { SkeletonCard } from "@/components/SkeletonCard";
 import { ContinueWatching } from "@/components/ContinueWatching";
 import { SearchBox } from "@/components/SearchBox";
 import { usePlayHistoryStore } from "@/store/usePlayHistoryStore";
@@ -142,7 +143,7 @@ export default function Home() {
   };
 
   return (
-    <div className="w-full max-w-7xl flex flex-col gap-8 pt-6">
+    <div className="w-full max-w-7xl flex flex-col gap-8 pt-6 page-enter">
       {/* Search Hero */}
       <div className="flex flex-col items-center justify-start gap-6 w-full max-w-3xl mx-auto">
         <SearchBox />
@@ -157,7 +158,7 @@ export default function Home() {
               checked={mediaType === "movie"}
               onChange={() => handleMediaTypeChange("movie")}
             />
-            <div className="px-6 py-2 rounded-lg text-sm font-semibold text-gray-500 peer-checked:bg-primary peer-checked:text-white peer-checked:shadow-md transition-all flex items-center gap-2">
+            <div className="media-toggle-btn px-6 py-2 rounded-lg text-sm font-semibold text-gray-500 peer-checked:bg-primary peer-checked:text-white peer-checked:shadow-md flex items-center gap-2">
               <span className="material-symbols-outlined text-[18px]">
                 movie
               </span>
@@ -173,7 +174,7 @@ export default function Home() {
               checked={mediaType === "tv"}
               onChange={() => handleMediaTypeChange("tv")}
             />
-            <div className="px-6 py-2 rounded-lg text-sm font-semibold text-gray-500 peer-checked:bg-primary peer-checked:text-white peer-checked:shadow-md transition-all flex items-center gap-2">
+            <div className="media-toggle-btn px-6 py-2 rounded-lg text-sm font-semibold text-gray-500 peer-checked:bg-primary peer-checked:text-white peer-checked:shadow-md flex items-center gap-2">
               <span className="material-symbols-outlined text-[18px]">tv</span>
               电视剧
             </div>
@@ -186,7 +187,7 @@ export default function Home() {
         <div className="flex gap-3 overflow-x-auto hide-scrollbar py-2 px-1">
           <button
             onClick={() => setShowTagModal(true)}
-            className="shrink-0 px-5 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 cursor-pointer"
+            className="shrink-0 px-5 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 cursor-pointer btn-press"
           >
             <span className="material-symbols-outlined text-[16px] align-middle mr-1">
               add
@@ -197,7 +198,7 @@ export default function Home() {
             <button
               key={tag}
               onClick={() => handleTagClick(tag)}
-              className={`shrink-0 px-5 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all cursor-pointer ${
+              className={`shrink-0 px-5 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all cursor-pointer btn-press ${
                 tag === currentTag
                   ? "bg-primary/10 border border-primary text-primary font-semibold hover:bg-primary hover:text-white"
                   : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900"
@@ -223,7 +224,7 @@ export default function Home() {
             <button
               onClick={handlePrevPage}
               disabled={page === 0}
-              className={`flex items-center justify-center w-9 h-9 rounded-lg border transition-all ${
+              className={`flex items-center justify-center w-9 h-9 rounded-lg border transition-all btn-press ${
                 page === 0
                   ? "border-gray-200 text-gray-300 cursor-not-allowed opacity-50"
                   : "border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-primary hover:text-primary cursor-pointer"
@@ -237,7 +238,7 @@ export default function Home() {
             <button
               onClick={handleNextPage}
               disabled={movies.length < pageSize}
-              className={`flex items-center justify-center w-9 h-9 rounded-lg border transition-all ${
+              className={`flex items-center justify-center w-9 h-9 rounded-lg border transition-all btn-press ${
                 movies.length < pageSize
                   ? "border-gray-200 text-gray-300 cursor-not-allowed opacity-50"
                   : "border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-primary hover:text-primary cursor-pointer"
@@ -252,14 +253,17 @@ export default function Home() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-            <span className="ml-4 text-gray-600">加载中...</span>
+          <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6 gap-6">
+            {Array.from({ length: pageSize }).map((_, index) => (
+              <SkeletonCard key={index} />
+            ))}
           </div>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6 gap-6">
-            {movies.map((movie) => (
-              <MovieCard key={movie.id} movie={movie} />
+            {movies.map((movie, index) => (
+              <div key={movie.id} className="grid-item-animate">
+                <MovieCard movie={movie} />
+              </div>
             ))}
           </div>
         )}
@@ -273,11 +277,11 @@ export default function Home() {
       {/* Tag Management Modal */}
       {showTagModal && (
         <div
-          className="fixed inset-0 bg-black/75 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 modal-backdrop-enter"
           onClick={() => setShowTagModal(false)}
         >
           <div
-            className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto modal-content-enter"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
@@ -286,7 +290,7 @@ export default function Home() {
               </h3>
               <button
                 onClick={() => setShowTagModal(false)}
-                className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                className="text-gray-400 hover:text-gray-600 cursor-pointer transition-colors btn-press"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
@@ -297,7 +301,7 @@ export default function Home() {
                 <h4 className="font-semibold text-gray-700">当前标签</h4>
                 <button
                   onClick={handleResetTags}
-                  className="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg cursor-pointer transition-colors"
+                  className="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg cursor-pointer transition-colors btn-press"
                 >
                   恢复默认
                 </button>
@@ -312,7 +316,7 @@ export default function Home() {
                     {tag !== "热门" && (
                       <button
                         onClick={() => handleDeleteTag(tag)}
-                        className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer btn-press"
                       >
                         <span className="material-symbols-outlined text-[16px]">
                           close
@@ -343,7 +347,7 @@ export default function Home() {
                 />
                 <button
                   type="submit"
-                  className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg font-medium cursor-pointer transition-colors"
+                  className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg font-medium cursor-pointer transition-colors btn-press"
                 >
                   添加
                 </button>

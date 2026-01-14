@@ -88,7 +88,7 @@ export function SearchBox({ initialValue = "", onSearch, placeholder = "搜索�
               <button
                 type="button"
                 onClick={handleClearInput}
-                className="p-1 hover:bg-gray-100 rounded-md text-gray-400 hover:text-gray-600 transition-colors"
+                className="p-1 hover:bg-gray-100 rounded-md text-gray-400 hover:text-gray-600 transition-colors btn-press"
               >
                 <span className="material-symbols-outlined text-xl">
                   close
@@ -105,7 +105,7 @@ export function SearchBox({ initialValue = "", onSearch, placeholder = "搜索�
 
       {/* Search History Dropdown */}
       {showHistory && searchHistory.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50 dropdown-enter">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <div className="flex items-center gap-2 text-gray-500 text-sm">
               <span className="material-symbols-outlined text-[18px]">
@@ -115,7 +115,7 @@ export function SearchBox({ initialValue = "", onSearch, placeholder = "搜索�
             </div>
             <button
               onClick={clearHistory}
-              className="text-primary text-sm hover:text-primary/80 transition-colors font-medium"
+              className="text-primary text-sm hover:text-primary/80 transition-colors font-medium btn-press"
             >
               清除全部
             </button>
@@ -138,7 +138,7 @@ export function SearchBox({ initialValue = "", onSearch, placeholder = "搜索�
                     e.stopPropagation();
                     removeFromHistory(item);
                   }}
-                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded-md text-gray-400 hover:text-gray-600 transition-all"
+                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded-md text-gray-400 hover:text-gray-600 transition-all btn-press"
                 >
                   <span className="material-symbols-outlined text-[18px]">
                     close
