@@ -74,10 +74,10 @@ git clone https://github.com/yourusername/NextTV.git
 cd NextTV
 
 # 安装依赖
-npm install
+bun install
 
 # 启动开发服务器
-npm run dev
+bun dev
 ```
 
 访问 [http://localhost:3000](http://localhost:3000) 查看应用。
@@ -86,10 +86,10 @@ npm run dev
 
 ```bash
 # 构建项目
-npm run build
+bun run build
 
 # 启动生产服务器
-npm start
+bun start
 ```
 
 ---
@@ -220,19 +220,19 @@ NextTV/
 ### 启动开发服务器
 
 ```bash
-npm run dev
+bun dev
 ```
 
 ### 代码检查
 
 ```bash
-npm run lint
+bun run lint
 ```
 
 ### 构建项目
 
 ```bash
-npm run build
+bun run build
 ```
 
 ---

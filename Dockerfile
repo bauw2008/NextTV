@@ -1,55 +1,54 @@
-# ---- 第 1 阶段：安装依赖 ----
-FROM node:25-alpine AS deps
+# -----------------------------------------------------------------------------
+# This Dockerfile.bun is specifically configured for projects using Bun
+# For npm/pnpm or yarn, refer to the Dockerfile instead
+# -----------------------------------------------------------------------------
+
+# Use Bun's official image
+FROM oven/bun:1 AS base
 
 WORKDIR /app
 
-# 仅复制依赖清单，提高构建缓存利用率
-COPY package.json pnpm-lock.yaml ./
+# Install dependencies with bun
+FROM base AS deps
+COPY package.json bun.lock* ./
+RUN bun install --no-save --frozen-lockfile
 
-# 安装所有依赖（含 devDependencies，后续会裁剪）
-RUN npm install --frozen-lockfile
-
-# ---- 第 2 阶段：构建项目 ----
-FROM node:25-alpine AS builder
+# Rebuild the source code only when needed
+FROM base AS builder
 WORKDIR /app
-
-# 复制依赖
 COPY --from=deps /app/node_modules ./node_modules
-# 复制全部源代码
 COPY . .
 
-# 在构建阶段也显式设置 DOCKER_ENV，
-ENV DOCKER_ENV=true
+# Next.js collects completely anonymous telemetry data about general usage.
+# Learn more here: https://nextjs.org/telemetry
+# Uncomment the following line in case you want to disable telemetry during the build.
+# ENV NEXT_TELEMETRY_DISABLED=1
 
-# 生成生产构建
-RUN npm run build
+RUN bun run build
 
-# ---- 第 3 阶段：生成运行时镜像 ----
-FROM node:25-alpine AS runner
-
-# 创建非 root 用户
-RUN addgroup -g 1001 -S nodejs && adduser -u 1001 -S nextjs -G nodejs
-
+# Production image, copy all the files and run next
+FROM base AS runner
 WORKDIR /app
-ENV NODE_ENV=production
-ENV HOSTNAME=0.0.0.0
-ENV PORT=3000
-ENV DOCKER_ENV=true
 
-# 从构建器中复制 standalone 输出
+# Uncomment the following line in case you want to disable telemetry during runtime.
+# ENV NEXT_TELEMETRY_DISABLED=1
+
+ENV NODE_ENV=production \
+    PORT=3000 \
+    HOSTNAME="0.0.0.0"
+
+RUN groupadd --system --gid 1001 nodejs && \
+    useradd --system --uid 1001 --no-log-init -g nodejs nextjs
+
+COPY --from=builder /app/public ./public
+
+# Automatically leverage output traces to reduce image size
+# https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-# 从构建器中复制 scripts 目录
-COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
-# 从构建器中复制 start.js
-COPY --from=builder --chown=nextjs:nodejs /app/start.js ./start.js
-# 从构建器中复制 public 和 .next/static 目录
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# 切换到非特权用户
 USER nextjs
 
 EXPOSE 3000
 
-# 使用自定义启动脚本，先预加载配置再启动服务器
-CMD ["node", "start.js"] 
+CMD ["bun", "./server.js"]

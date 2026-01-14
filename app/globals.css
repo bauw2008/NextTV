@@ -186,15 +186,26 @@
     padding: 3px;
   }
 
-  /* 扩展hover检测区域，避免鼠标移动到面板时消失 */
+  /* 水平方向扩展hover检测区域，但不向上扩展避免与进度条冲突 */
   .art-control-volume::before {
     content: "";
     position: absolute;
-    top: -20px;
+    top: 0;
     left: -5px;
     right: -5px;
     bottom: -3px;
     z-index: -1;
+    pointer-events: auto;
+  }
+
+  /* 音量面板向下扩展hover区域，连接按钮和面板 */
+  .art-volume-panel::after {
+    content: "";
+    position: absolute;
+    bottom: -15px;
+    left: -5px;
+    right: -5px;
+    height: 20px;
     pointer-events: auto;
   }
 
@@ -347,18 +358,42 @@
 }
 
 /* Stagger delays for grid items */
-.grid-item-animate:nth-child(1) { animation-delay: 0.05s; }
-.grid-item-animate:nth-child(2) { animation-delay: 0.1s; }
-.grid-item-animate:nth-child(3) { animation-delay: 0.15s; }
-.grid-item-animate:nth-child(4) { animation-delay: 0.2s; }
-.grid-item-animate:nth-child(5) { animation-delay: 0.25s; }
-.grid-item-animate:nth-child(6) { animation-delay: 0.3s; }
-.grid-item-animate:nth-child(7) { animation-delay: 0.35s; }
-.grid-item-animate:nth-child(8) { animation-delay: 0.4s; }
-.grid-item-animate:nth-child(9) { animation-delay: 0.45s; }
-.grid-item-animate:nth-child(10) { animation-delay: 0.5s; }
-.grid-item-animate:nth-child(11) { animation-delay: 0.55s; }
-.grid-item-animate:nth-child(12) { animation-delay: 0.6s; }
+.grid-item-animate:nth-child(1) {
+  animation-delay: 0.05s;
+}
+.grid-item-animate:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.grid-item-animate:nth-child(3) {
+  animation-delay: 0.15s;
+}
+.grid-item-animate:nth-child(4) {
+  animation-delay: 0.2s;
+}
+.grid-item-animate:nth-child(5) {
+  animation-delay: 0.25s;
+}
+.grid-item-animate:nth-child(6) {
+  animation-delay: 0.3s;
+}
+.grid-item-animate:nth-child(7) {
+  animation-delay: 0.35s;
+}
+.grid-item-animate:nth-child(8) {
+  animation-delay: 0.4s;
+}
+.grid-item-animate:nth-child(9) {
+  animation-delay: 0.45s;
+}
+.grid-item-animate:nth-child(10) {
+  animation-delay: 0.5s;
+}
+.grid-item-animate:nth-child(11) {
+  animation-delay: 0.55s;
+}
+.grid-item-animate:nth-child(12) {
+  animation-delay: 0.6s;
+}
 
 /* ===== Button Micro-interactions ===== */
 .btn-press {
@@ -391,7 +426,8 @@ input:checked + .media-toggle-btn .material-symbols-outlined {
 }
 
 @keyframes iconBounce {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1.1);
   }
   50% {
@@ -405,7 +441,7 @@ input:checked + .media-toggle-btn .material-symbols-outlined {
 }
 
 .btn-ripple::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -433,23 +469,13 @@ input:checked + .media-toggle-btn .material-symbols-outlined {
 }
 
 .skeleton {
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 0%,
-    #f8f8f8 50%,
-    #f0f0f0 100%
-  );
+  background: linear-gradient(90deg, #f0f0f0 0%, #f8f8f8 50%, #f0f0f0 100%);
   background-size: 1000px 100%;
   animation: shimmer 2s infinite linear;
 }
 
 .skeleton-dark {
-  background: linear-gradient(
-    90deg,
-    #2a2a2a 0%,
-    #3a3a3a 50%,
-    #2a2a2a 100%
-  );
+  background: linear-gradient(90deg, #2a2a2a 0%, #3a3a3a 50%, #2a2a2a 100%);
   background-size: 1000px 100%;
   animation: shimmer 2s infinite linear;
 }
