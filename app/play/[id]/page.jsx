@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useEffectEvent, useRef, Suspense, use } from "react";
+import { useState, useEffect, useEffectEvent, useRef, use } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Artplayer from "artplayer";
@@ -13,7 +13,8 @@ import { useSettingsStore } from "@/store/useSettingsStore";
 import { usePlayHistoryStore } from "@/store/usePlayHistoryStore";
 import { formatTime } from "@/lib/util";
 import { filterAdsFromM3U8 } from "@/lib/util";
-import { getInitialDataPromise, fetchDanmakuForEpisode } from "@/lib/paralleLoadingData";
+import { getInitialDataPromise } from "@/lib/paralleLoadingData";
+import { createDanmakuLoader } from "@/lib/danmakuApi";
 // ============================================================================
 // 主组件
 // ============================================================================
@@ -36,11 +37,11 @@ export default function PlayerPage() {
   const videoSources = useSettingsStore((state) => state.videoSources);
   const playHistory = usePlayHistoryStore((state) => state.playHistory);
   // 获取或创建初始数据 Promise
-  const dataPromise = getInitialDataPromise(id, source, videoSources, danmakuSources, playHistory);
+  const dataPromise = getInitialDataPromise(id, source, videoSources, playHistory);
 
   // 使用 React 19 的 use hook 消费 Promise
 
-  const { videoDetail, initialDanmaku, doubanActors, initialEpisodeIndex, initialTime } = use(dataPromise);
+  const { videoDetail, doubanActors, initialEpisodeIndex, initialTime } = use(dataPromise);
 
   // -------------------------------------------------------------------------
   // 状态
@@ -56,38 +57,6 @@ export default function PlayerPage() {
   // 时间控制
   const lastSkipCheckRef = useRef(0);
   const lastSaveTimeRef = useRef(0);
-
-  // ============================================================================
-  // 普通非响应式函数
-  // ============================================================================
-  // 更新弹幕到播放器
-  const updateDanmakuPlugin = (newDanmaku) => {
-    if (!artPlayerRef.current.plugins.artplayerPluginDanmuku || !artPlayerRef.current) return;
-
-    if (newDanmaku.length === 0) {
-      console.log("清空弹幕");
-      if (typeof artPlayerRef.current.plugins.artplayerPluginDanmuku.reset === "function") {
-        artPlayerRef.current.plugins.artplayerPluginDanmuku.reset();
-      }
-      return;
-    }
-
-    if (typeof artPlayerRef.current.plugins.artplayerPluginDanmuku.load === "function") {
-      console.log("重新加载弹幕，共", newDanmaku.length, "条");
-
-      artPlayerRef.current.plugins.artplayerPluginDanmuku.reset();
-      artPlayerRef.current.plugins.artplayerPluginDanmuku.config({
-        danmuku: newDanmaku,
-      });
-      artPlayerRef.current.plugins.artplayerPluginDanmuku.load();
-
-      if (artPlayerRef.current && artPlayerRef.current.notice) {
-        artPlayerRef.current.notice.show = `已加载 ${newDanmaku.length} 条弹幕`;
-      }
-    } else {
-      console.warn("弹幕插件不支持 load 方法，无法动态更新弹幕");
-    }
-  };
 
   // ============================================================================
   // 普通版本的响应式函数
@@ -180,14 +149,12 @@ export default function PlayerPage() {
       });
     }
 
-    // 6. 异步加载新弹幕并更新
-    try {
-      const newDanmaku = await fetchDanmakuForEpisode(videoDetail, newIndex, danmakuSources);
-      updateDanmakuPlugin(newDanmaku);
-    } catch (error) {
-      console.error("加载弹幕失败:", error);
-      updateDanmakuPlugin([]);
-    }
+    // 6. 尝试将弹幕的异步函数切换过去
+    const isMovie = videoDetail.episodes?.length === 1;
+    artPlayerRef.current.plugins.artplayerPluginDanmuku.config({
+      danmuku: createDanmakuLoader(danmakuSources, videoDetail.douban_id, newTitle, newIndex, isMovie),
+    });
+    artPlayerRef.current.plugins.artplayerPluginDanmuku.load();
   };
   // -------------------------------------------------------------------------
   // useEffectEvent 创建只能在 useEffect 中调用的稳定函数
@@ -350,7 +317,6 @@ export default function PlayerPage() {
       console.log("初始化播放器:", {
         episode: initialEpisodeIndex + 1,
         time: initialTime,
-        danmakuCount: initialDanmaku.length,
       });
 
       const currentUrl = videoDetail?.episodes?.[initialEpisodeIndex] || "";
@@ -395,7 +361,7 @@ export default function PlayerPage() {
         // 弹幕插件
         plugins: [
           artplayerPluginDanmuku({
-            danmuku: initialDanmaku,
+            danmuku: createDanmakuLoader(danmakuSources, videoDetail.douban_id, currentTitle, initialEpisodeIndex, videoDetail.episodes?.length === 1),
             speed: 7.5,
             opacity: 1,
             fontSize: 23,
