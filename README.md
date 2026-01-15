@@ -39,6 +39,26 @@
 
 ---
 
+<details>
+  <summary>点击查看项目截图</summary>
+  <img src="https://tncache1-f1.v3mh.com/image/2026/01/16/3c7155e313df3bdae29b66815a42b3db.png" alt="主页截图" style="max-width:600px">
+  <img src="https://tncache1-f1.v3mh.com/image/2026/01/16/778e5b27c569b953924f7c803d788e83.png" alt="搜索截图" style="max-width:600px">
+  <img src="https://tncache1-f1.v3mh.com/image/2026/01/16/0d13d14d462d7c9d7cb250e072f1fdea.png" alt="播放截图" style="max-width:600px">
+  <img src="https://tncache1-f1.v3mh.com/image/2026/01/16/fc1aaa5124285bf4d02fc8df8193821c.png" alt="设置截图" style="max-width:600px">
+</details>
+
+---
+
+---
+
+### 重要说明：
+
+- **本项目为空壳播放器，自带唯一播放源不稳定，仅供学习使用，请自行更换播放源**
+- **本项目不添加用户登录以及认证功能**
+- **本项目完全由 Claude Code 生成，仅作为学习参考，请勿用于商业用途**
+
+---
+
 ## 技术栈
 
 ### 核心框架
@@ -111,6 +131,37 @@ bun start
 - **进度保存**：自动保存播放进度（每 5 秒）
 - **弹幕显示**：实时加载和显示弹幕评论
 
+### 3. 如何设置弹幕播放源
+
+请基于以上两个项目自行搭建弹幕源：
+
+- [danmu_api](https://github.com/SeqCrafter/danmu_api)
+- [fetch_danmu](https://github.com/SeqCrafter/fetch_danmu)
+
+两个项目的请求参数完全一致，大概是这样：
+
+```
+https://<搭建地址>/api/douban?douban_id=36481469&episode_number=1
+```
+
+或者对于`danmu_api`来说
+
+```
+https://<搭建地址>/{token}/api/v2/douban?douban_id=36481469&episode_number=1
+```
+
+在 NextTV 的设置中，弹幕源应该为`?`之前的地址，例如：
+
+```
+https://<搭建地址>/api/douban
+```
+
+或者
+
+```
+https://<搭建地址>/{token}/api/v2/douban
+```
+
 ### 3. 播放历史
 
 - 自动记录观看历史（最多 20 条）
@@ -160,58 +211,6 @@ bun start
 | `↑`       | 增加音量   |
 | `↓`       | 减少音量   |
 | `F`       | 全屏切换   |
-
----
-
-## 项目结构
-
-```
-NextTV/
-├── app/                          # Next.js App Router 目录
-│   ├── layout.js                 # 根布局组件
-│   ├── page.js                   # 首页（豆瓣推荐）
-│   ├── globals.css               # 全局样式
-│   ├── api/                      # API 路由
-│   │   ├── search/route.js       # 搜索 API 代理
-│   │   ├── douban/route.js       # 豆瓣 API 代理
-│   │   └── detail/route.js       # 视频详情 API
-│   ├── search/                   # 搜索页面
-│   │   ├── page.js
-│   │   └── SearchContent.js
-│   ├── play/[id]/                # 播放页面（动态路由）
-│   │   └── page.js
-│   └── settings/                 # 设置页面
-│       └── page.js
-│
-├── components/                   # React 组件
-│   ├── Navbar.js                 # 导航栏
-│   ├── Footer.js                 # 页脚
-│   ├── MovieCard.js              # 视频卡片组件
-│   ├── Artplayer.js              # 播放器组件
-│   ├── EpisodeList.js            # 剧集列表组件
-│   ├── ContinueWatching.js       # 继续观看组件
-│   ├── FavoriteButton.js         # 收藏按钮组件
-│   └── Pagination.js             # 分页组件
-│
-├── lib/                          # 工具函数库
-│   ├── api.js                    # 视频搜索和详情 API
-│   ├── constants.js              # 常量配置
-│   ├── doubanApi.js              # 豆瓣推荐 API
-│   ├── danmakuApi.js             # 弹幕 API
-│   └── util.js                   # 工具函数
-│
-├── store/                        # Zustand 状态管理
-│   ├── usePlayHistoryStore.js    # 播放历史状态
-│   ├── useSettingsStore.js       # 设置状态
-│   └── useFavoritesStore.js      # 收藏状态
-│
-├── public/                       # 静态资源
-│   └── logo.png                  # NextTV Logo
-│
-├── package.json                  # 依赖管理
-├── next.config.js                # Next.js 配置
-└── postcss.config.mjs            # PostCSS 配置
-```
 
 ---
 
@@ -268,5 +267,5 @@ Fork 项目后，进入 EdgeOne pages 即可部署。
 ---
 
 <div align="center">
-  <p>Made with ❤️ by NextTV Team</p>
+  <p>Made with ❤️ by Xiaoguang </p>
 </div>
