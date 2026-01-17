@@ -1,4 +1,4 @@
-import {NextResponse} from "next/server";
+import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic"; // Prevent caching
 
@@ -20,14 +20,14 @@ const fixAdM3u8AiLatest = async (m3u8_url, headers) => {
   let ts = new Date().getTime();
   let option = headers
     ? {
-        headers: headers,
-      }
+      headers: headers,
+    }
     : {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        },
-      };
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      },
+    };
 
   function b(s1, s2) {
     let i = 0;
@@ -165,92 +165,108 @@ const fixAdM3u8AiLatest = async (m3u8_url, headers) => {
   if (ad_urls.length == 0) {
     console.log("----处理时间广告(基于相同时长统计)----");
 
-    // 按 #EXT-X-DISCONTINUITY 分割成组，检测每组内是否有超过3个相同的 EXTINF 时间值
-    let adGroups = []; // 存储需要删除的广告组的位置信息 { startIndex, endIndex }
-
-    let groupStartIndex = -1;
-    let groupTimes = []; // 当前组内的所有 EXTINF 时间值
-
+    let itemdata = [];
+    function addData(position, quantity, time) {
+      itemdata.push({
+        position,
+        quantity,
+        time,
+      });
+    }
+    function count3(str) {
+      let count = 0;
+      for (let i = 0; i < str.length; i++) {
+        if (str[i] === "3") {
+          count++;
+        }
+      }
+      return count;
+    }
+    function printMinTimeData() {
+      let countMap = new Map();
+      let minTimeCount = 3;
+      let minTimeData = [];
+      itemdata.forEach((item) => {
+        countMap.set(item.time, (countMap.get(item.time) || 0) + 1);
+      });
+      countMap.forEach((count, time) => {
+        if (count <= minTimeCount) {
+          minTimeCount = count;
+          let tmp = [];
+          tmp = itemdata.filter((item) => item.time == time);
+          tmp.forEach((item) => minTimeData.push(item));
+        }
+      });
+      minTimeData.sort((a, b) => a.position - b.position);
+      for (let k = minTimeData.length - 1; k > -1; k--) {
+        let k1 = minTimeData[k].position;
+        let n = minTimeData[k].quantity;
+        let t = minTimeData[k].time;
+        if (parseFloat(n) < 10) {
+          console.log("位置：" + k1 + " 数量：" + n + " 时间：" + t);
+          for (let j = k1; j < k1 + n * 2; j++) {
+            console.log(ss[j]);
+          }
+          ss.splice(k1, 2 * n + 1);
+        }
+      }
+    }
+    let j = 0,
+      k1 = 0,
+      m = 0,
+      n = 0,
+      l = 0,
+      tt = 0,
+      t = 0;
+    let s2 = "";
     for (let i = 0; i < ss.length; i++) {
       let s = ss[i];
-
+      let s1 = "";
       if (s.startsWith("#EXTINF")) {
-        // 记录组的开始位置
-        if (groupStartIndex === -1) {
-          groupStartIndex = i;
+        s1 = s.slice(8);
+        n++;
+        if (n == 1) k1 = i;
+        if (s2.indexOf(s1) == -1) {
+          s2 = s2 + s1;
+          m++;
         }
-        // 提取时间值 (格式: #EXTINF:1.800000,)
-        let timeMatch = s.match(/#EXTINF:([\d.]+)/);
-        if (timeMatch) {
-          groupTimes.push(timeMatch[1]);
-        }
+        l += count3(s1);
+        t = t + parseFloat(s1);
+        tt += parseFloat(s1);
+        i++;
+        s = ss[i];
       }
-
-      // 遇到 DISCONTINUITY 或 ENDLIST 时，检查当前组是否为广告
       if (
         s.startsWith("#EXT-X-DISCONTINUITY") ||
-        s.startsWith("#EXT-X-ENDLIST") ||
-        i === ss.length - 1
+        s.startsWith("#EXT-X-ENDLIST")
       ) {
-        if (groupTimes.length > 0 && groupStartIndex !== -1) {
-          // 检查从第一个片段开始，有多少个连续片段与第一个时长相同
-          let firstTime = groupTimes[0];
-          let consecutiveCount = 1; // 第一个片段自己算1个
-
-          for (let j = 1; j < groupTimes.length; j++) {
-            if (groupTimes[j] === firstTime) {
-              consecutiveCount++;
-            } else {
-              // 遇到不同时长的片段，停止计数
-              break;
-            }
-          }
-
-          // 检查最后一个片段时长是否小于1秒
-          let lastTime = parseFloat(groupTimes[groupTimes.length - 1]);
-          let lastFragmentShort = lastTime <= 1;
-
-          // 广告判定条件：1. 从第一个片段开始连续相同时长的片段数 >= 3  2. 最后一个片段时长 < 1秒
-          let isAd = consecutiveCount >= 3 && lastFragmentShort;
-
-          if (isAd) {
-            // 计算组的结束位置（包含到当前的 DISCONTINUITY 或最后一个 ts 文件）
-            let groupEndIndex = i;
-            // 如果当前行是 DISCONTINUITY，组结束于前一行
-            if (s.startsWith("#EXT-X-DISCONTINUITY")) {
-              groupEndIndex = i; // 包含 DISCONTINUITY 标记
-            }
-
-            console.log(
-              `发现广告组: 位置 ${groupStartIndex}-${groupEndIndex}, ` +
-                `共 ${groupTimes.length} 个片段, ` +
-                `从第一个片段开始连续 ${consecutiveCount} 个时长为 ${firstTime}秒`,
-            );
-
-            adGroups.push({
-              startIndex: groupStartIndex,
-              endIndex: groupEndIndex,
-            });
-          }
+        if (n >= 3 && t < 30 && l > n * 3) {
+          console.log(
+            "位置：" +
+            k1 +
+            " 数量：" +
+            n +
+            " 时间：" +
+            t +
+            " 3的数量：" +
+            l +
+            " 进度：" +
+            Math.floor(tt / 60) +
+            "分钟" +
+            Math.floor(tt - Math.floor(tt / 60) * 60) +
+            "秒",
+          );
+          addData(k1, n, t.toFixed(5));
         }
-
-        // 重置组状态
-        groupStartIndex = -1;
-        groupTimes = [];
+        t = 0;
+        m = 0;
+        n = 0;
+        l = 0;
+        s2 = "";
       }
     }
-
-    // 从后往前删除广告组，避免索引偏移问题
-    for (let k = adGroups.length - 1; k >= 0; k--) {
-      let {startIndex, endIndex} = adGroups[k];
-      let deleteCount = endIndex - startIndex + 1;
-      console.log(`删除广告组: 从索引 ${startIndex} 删除 ${deleteCount} 行`);
-      ss.splice(startIndex, deleteCount);
-    }
-
-    console.log(`共过滤 ${adGroups.length} 个广告组`);
+    printMinTimeData();
   }
-
   m3u8 = ss.join("\n");
   console.log("处理耗时：" + (new Date().getTime() - ts).toString());
   return m3u8;
@@ -261,11 +277,11 @@ const m3u8Cache = new Map();
 const CACHE_TTL = 3600 * 1000; // 3600秒 (毫秒单位)
 
 export async function GET(request) {
-  const {searchParams} = new URL(request.url);
+  const { searchParams } = new URL(request.url);
   const url = searchParams.get("url");
 
   if (!url) {
-    return NextResponse.json({error: "Missing 'url' parameter"}, {status: 400});
+    return NextResponse.json({ error: "Missing 'url' parameter" }, { status: 400 });
   }
 
   // 1. 检查缓存
@@ -315,8 +331,8 @@ export async function GET(request) {
   } catch (error) {
     console.error("Ad filter error:", error);
     return NextResponse.json(
-      {error: "Failed to process M3U8", details: error.message},
-      {status: 500},
+      { error: "Failed to process M3U8", details: error.message },
+      { status: 500 },
     );
   }
 }
