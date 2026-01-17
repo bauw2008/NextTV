@@ -300,8 +300,9 @@ export default function PlayerPage() {
         return;
       }
 
-      setLoading(true);
+      
       setError(null);
+      setLoading(true);
 
       try {
         const videoDetailData = await getVideoDetail(id, sourceConfig.name, sourceConfig.url);
@@ -680,7 +681,7 @@ export default function PlayerPage() {
   // -------------------------------------------------------------------------
   // 渲染
   // -------------------------------------------------------------------------
-  if (error || !id || !source || !videoDetail) {
+  if (error) {
     return (
       <div className="w-full max-w-7xl pt-4 flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-4">
@@ -689,10 +690,10 @@ export default function PlayerPage() {
         </div>
       </div>
     );
-  }
-  if (loading) {
+  };
+  if (loading || !videoDetail) {
     return <LoadingSpinner />;
-  }
+  };
   return (
     <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
       <nav aria-label="Breadcrumb" className="flex text-sm text-slate-500 dark:text-slate-400 mb-4 overflow-x-auto whitespace-nowrap">
