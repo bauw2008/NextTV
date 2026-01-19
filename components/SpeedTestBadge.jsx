@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { getVideoDetail } from "@/lib/cmsApi";
 import { testStreamUrl } from "@/lib/clientSpeedTest";
 
@@ -8,10 +8,10 @@ import { testStreamUrl } from "@/lib/clientSpeedTest";
 const resultCache = new Map();
 const CACHE_DURATION = 60 * 1000; // 1 minute
 
-export function SpeedTestBadge({ videoId, sourceKey, sourceUrl }) {
+export function SpeedTestBadge({ videoId, sourceKey, sourceName, sourceUrl }) {
   const cacheKey = `${videoId}-${sourceKey}`;
   
-  const getCachedResult = () => {
+  const getCachedResult = useCallback(() => {
     if (resultCache.has(cacheKey)) {
       const cached = resultCache.get(cacheKey);
       if (Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -21,7 +21,7 @@ export function SpeedTestBadge({ videoId, sourceKey, sourceUrl }) {
       }
     }
     return null;
-  };
+  }, [cacheKey]);
 
   const initialResult = getCachedResult();
   const [loading, setLoading] = useState(!initialResult);
@@ -43,7 +43,7 @@ export function SpeedTestBadge({ videoId, sourceKey, sourceUrl }) {
       try {
         setLoading(true);
         // 1. Get video details
-        const detail = await getVideoDetail(videoId, sourceKey, sourceUrl);
+        const detail = await getVideoDetail(videoId, sourceKey, sourceName, sourceUrl);
         
         if (!detail || !detail.episodes || detail.episodes.length === 0) {
           throw new Error("No episodes found");
@@ -83,7 +83,7 @@ export function SpeedTestBadge({ videoId, sourceKey, sourceUrl }) {
     return () => {
       mounted = false;
     };
-  }, [videoId, sourceKey, sourceUrl, cacheKey]);
+  }, [videoId, sourceKey, sourceUrl, cacheKey, getCachedResult, sourceName]);
 
   if (loading) {
     return (

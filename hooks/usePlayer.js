@@ -1,32 +1,34 @@
-import {useEffect, useRef, useCallback} from "react";
+import {useEffect, useRef, useEffectEvent} from "react";
 import Artplayer from "artplayer";
 import Hls from "hls.js";
 import artplayerPluginDanmuku from "artplayer-plugin-danmuku";
 import artplayerPluginLiquidGlass from "@/lib/artplayer-plugin-liquid-glass";
 import {useSettingsStore} from "@/store/useSettingsStore";
 import {usePlayHistoryStore} from "@/store/usePlayHistoryStore";
-import {formatTime, filterAdsFromM3U8} from "@/lib/util";
+import {formatTime, CustomHlsJsLoader} from "@/lib/util";
 import {createDanmakuLoader} from "@/lib/danmakuApi";
 export function usePlayer({
   videoDetail,
-  loading,
   currentEpisodeIndex,
-  initialEpisodeIndex,
-  initialTime,
-  blockAdEnabledRef,
-  skipConfigRef,
-  id,
-  source,
   setCurrentEpisodeIndex,
 }) {
   const artRef = useRef(null);
   const artPlayerRef = useRef(null);
   const lastSkipCheckRef = useRef(0);
   const lastSaveTimeRef = useRef(0);
-  const playingEpisodeIndexRef = useRef(initialEpisodeIndex.current || 0);
+  const blockAdEnabledRef = useRef(useSettingsStore.getState().blockAdEnabled);
+  const skipConfigRef = useRef(useSettingsStore.getState().skipConfig);
+  const isSwitchingEpisodeRef = useRef(false); // 标记是否正在切换剧集
+  const prevEpisodeIndexRef = useRef(currentEpisodeIndex); // 记录上一次的剧集索引
+  const CurrentEpisodeIndexEvent = useEffectEvent(() => {
+    return currentEpisodeIndex;
+  });
 
-  const savePlayProgress = useCallback(() => {
-    if (!artPlayerRef.current || !videoDetail || !id || !source) return;
+  const savePlayProgress = () => {
+    if (!artPlayerRef.current || !videoDetail) return;
+
+    // 如果正在切换剧集，跳过保存（避免保存错误的 currentTime）
+    if (isSwitchingEpisodeRef.current) return;
 
     const currentTime = artPlayerRef.current.currentTime || 0;
     const duration = artPlayerRef.current.duration || 0;
@@ -35,145 +37,98 @@ export function usePlayer({
 
     try {
       const {addPlayRecord} = usePlayHistoryStore.getState();
-      const episodeIndexToSave = playingEpisodeIndexRef.current;
 
       addPlayRecord({
-        source,
-        source_name: videoDetail.source,
-        id,
+        source: videoDetail.source,
+        source_name: videoDetail.source_name,
+        id: videoDetail.id,
         title: videoDetail.title,
         poster: videoDetail.poster,
         year: videoDetail.year,
-        currentEpisodeIndex: episodeIndexToSave,
+        currentEpisodeIndex,
         totalEpisodes: videoDetail.episodes?.length || 1,
         currentTime,
         duration,
       });
       console.log("播放进度已保存:", {
         title: videoDetail.title,
-        episode: episodeIndexToSave + 1,
+        episode: currentEpisodeIndex + 1,
         progress: `${Math.floor(currentTime)}/${Math.floor(duration)}`,
       });
     } catch (err) {
       console.error("保存播放进度失败:", err);
     }
-  }, [videoDetail, id, source]);
+  };
+  const savePlayProgressEvent = useEffectEvent(savePlayProgress);
 
-  const switchToEpisode = useCallback(
-    (newIndex) => {
-      if (!videoDetail || !artPlayerRef.current) return;
+  const switchToEpisode = () => {
+    if (!videoDetail || !artPlayerRef.current) return;
 
-      const newUrl = videoDetail.episodes?.[newIndex];
-      const newTitle =
-        videoDetail.episodes_titles?.[newIndex] || `第 ${newIndex + 1} 集`;
+    const currentUrl = videoDetail.episodes?.[currentEpisodeIndex];
+    const currentTitle =
+      videoDetail.episodes_titles?.[currentEpisodeIndex] ||
+      `第 ${currentEpisodeIndex + 1} 集`;
 
-      if (!newUrl) {
-        console.error("Invalid episode index:", newIndex);
-        return;
-      }
+    if (!currentUrl) {
+      console.error("Invalid episode index:", currentEpisodeIndex);
+      return;
+    }
 
-      console.log("Switching to episode:", newIndex + 1);
+    console.log("Switching to episode:", currentEpisodeIndex + 1);
 
-      savePlayProgress();
+    // 标记开始切换剧集，阻止保存错误的进度
+    isSwitchingEpisodeRef.current = true;
 
-      const {getPlayRecord} = usePlayHistoryStore.getState();
-      const {danmakuSources} = useSettingsStore.getState();
+    // 1. 切换播放源 && 清空弹幕
+    artPlayerRef.current.switch = currentUrl;
+    artPlayerRef.current.title = `${videoDetail.title} - ${currentTitle}`;
+    artPlayerRef.current.poster =
+      videoDetail?.backdrop || videoDetail?.poster || "";
+    artPlayerRef.current.plugins.artplayerPluginDanmuku.reset();
+    artPlayerRef.current.plugins.artplayerPluginDanmuku.config({
+      danmuku: [],
+    });
+    artPlayerRef.current.plugins.artplayerPluginDanmuku.load();
+    console.log("Cleared danmaku");
+    // 2. 切换弹幕源
+    const {danmakuSources} = useSettingsStore.getState();
+    const isMovie = videoDetail.episodes?.length === 1;
+    artPlayerRef.current.plugins.artplayerPluginDanmuku.config({
+      danmuku: createDanmakuLoader(
+        danmakuSources,
+        videoDetail.douban_id,
+        currentTitle,
+        currentEpisodeIndex,
+        isMovie,
+      ),
+    });
+    artPlayerRef.current.plugins.artplayerPluginDanmuku.load();
 
-      const playRecord = getPlayRecord(source, id);
-      let resumeTime = 0;
-      if (playRecord && playRecord.currentEpisodeIndex === newIndex) {
-        resumeTime = playRecord.currentTime > 5 ? playRecord.currentTime : 0;
-        console.log(
-          `Found play record for episode ${newIndex + 1}, resuming to ${Math.floor(resumeTime)} seconds`,
-        );
-      }
+    // 3. 监听新视频开始播放，重置切换标志
+    artPlayerRef.current.once("video:canplay", () => {
+      isSwitchingEpisodeRef.current = false;
+      console.log("新剧集已就绪，恢复进度保存");
+    });
+  };
 
-      artPlayerRef.current.switch = newUrl;
-      artPlayerRef.current.title = `${videoDetail.title} - ${newTitle}`;
-      artPlayerRef.current.poster =
-        videoDetail?.backdrop || videoDetail?.poster || "";
-      artPlayerRef.current.plugins.artplayerPluginDanmuku.reset();
-      artPlayerRef.current.plugins.artplayerPluginDanmuku.config({
-        danmuku: [],
-      });
-      artPlayerRef.current.plugins.artplayerPluginDanmuku.load();
-      console.log("Cleared danmaku");
-
-      if (resumeTime > 0) {
-        artPlayerRef.current.once("video:canplay", () => {
-          try {
-            const duration = artPlayerRef.current.duration || 0;
-            let target = resumeTime;
-            if (duration && target >= duration - 2) {
-              target = Math.max(0, duration - 5);
-            }
-            artPlayerRef.current.currentTime = target;
-            artPlayerRef.current.notice.show = `Resumed to ${Math.floor(target / 60)}:${String(Math.floor(target % 60)).padStart(2, "0")}`;
-            console.log("Successfully resumed playback progress to:", target);
-          } catch (err) {
-            console.warn("Failed to resume playback progress:", err);
-          }
-        });
-      }
-
-      const isMovie = videoDetail.episodes?.length === 1;
-      artPlayerRef.current.plugins.artplayerPluginDanmuku.config({
-        danmuku: createDanmakuLoader(
-          danmakuSources,
-          videoDetail.douban_id,
-          newTitle,
-          newIndex,
-          isMovie,
-        ),
-      });
-      artPlayerRef.current.plugins.artplayerPluginDanmuku.load();
-
-      playingEpisodeIndexRef.current = newIndex;
-      if (setCurrentEpisodeIndex) {
-        setCurrentEpisodeIndex(newIndex);
-      }
-    },
-    [videoDetail, id, source, savePlayProgress, setCurrentEpisodeIndex],
-  );
+  const switchToEpisodeEvent = useEffectEvent(switchToEpisode);
 
   useEffect(() => {
-    if (loading || !videoDetail || !artRef.current || artPlayerRef.current) {
+    if (!videoDetail || !artRef.current || artPlayerRef.current) {
       return;
     }
     try {
       console.log("重新初始化播放器了！");
+      const realtimeCurrentEpisodeIndex = CurrentEpisodeIndexEvent();
+      console.log("realtimeCurrentEpisodeIndex", realtimeCurrentEpisodeIndex);
       const currentUrl =
-        videoDetail?.episodes?.[initialEpisodeIndex.current] || "";
+        videoDetail?.episodes?.[realtimeCurrentEpisodeIndex] || "";
       const currentTitle =
-        videoDetail?.episodes_titles?.[initialEpisodeIndex.current] ||
-        `第${initialEpisodeIndex.current + 1}集`;
-
-      // Ensure the playing ref starts with the correct loaded initial index
-      playingEpisodeIndexRef.current = initialEpisodeIndex.current;
+        videoDetail?.episodes_titles?.[realtimeCurrentEpisodeIndex] ||
+        `第${realtimeCurrentEpisodeIndex + 1}集`;
 
       const {danmakuSources} = useSettingsStore.getState();
-      class CustomHlsJsLoader extends Hls.DefaultConfig.loader {
-        constructor(config) {
-          super(config);
-          const load = this.load.bind(this);
-          this.load = function (context, config, callbacks) {
-            // 拦截manifest和level请求
-            if (context.type === "manifest" || context.type === "level") {
-              const onSuccess = callbacks.onSuccess;
-              callbacks.onSuccess = function (response, stats, context) {
-                // 如果是m3u8文件，处理内容以移除广告分段
-                if (response.data && typeof response.data === "string") {
-                  // 过滤掉广告段 - 实现更精确的广告过滤逻辑
-                  response.data = filterAdsFromM3U8(response.data);
-                }
-                return onSuccess(response, stats, context, null);
-              };
-            }
-            // 执行原始load方法
-            load(context, config, callbacks);
-          };
-        }
-      }
+
       artPlayerRef.current = new Artplayer({
         container: artRef.current,
         url: currentUrl,
@@ -216,7 +171,7 @@ export function usePlayer({
               danmakuSources,
               videoDetail.douban_id,
               currentTitle,
-              initialEpisodeIndex.current,
+              realtimeCurrentEpisodeIndex,
               videoDetail.episodes?.length === 1,
             ),
             speed: 7.5,
@@ -293,10 +248,6 @@ export function usePlayer({
               }
             });
           },
-        },
-        icons: {
-          loading:
-            '<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDUwIDUwIj48cGF0aCBkPSJNMjUuMjUxIDYuNDYxYy0xMC4zMTggMC0xOC42ODMgOC4zNjUtMTguNjgzIDE4LjY4M2g0LjA2OGMwLTguMDcgNi41NDUtMTQuNjE1IDE0LjYxNS0xNC42MTVWNi40NjF6IiBmaWxsPSIjMDA5Njg4Ij48YW5pbWF0ZVRyYW5zZm9ybSBhdHRyaWJ1dGVOYW1lPSJ0cmFuc2Zvcm0iIGF0dHJpYnV0ZVR5cGU9IlhNTCIgZHVyPSIxcyIgZnJvbT0iMCAyNSAyNSIgcmVwZWF0Q291bnQ9ImluZGVmaW5pdGUiIHRvPSIzNjAgMjUgMjUiIHR5cGU9InJvdGF0ZSIvPjwvcGF0aD48L3N2Zz4=">',
         },
         settings: [
           {
@@ -407,14 +358,15 @@ export function usePlayer({
             html: '<button class="art-icon art-icon-next" style="display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>',
             tooltip: "下一集",
             click: () => {
-              const currentIdx = playingEpisodeIndexRef.current;
+              // 每次点击时获取最新的 episodeIndex
+              const currentIdx = CurrentEpisodeIndexEvent();
               if (
                 videoDetail &&
                 videoDetail.episodes &&
                 currentIdx < videoDetail.episodes.length - 1
               ) {
-                savePlayProgress();
-                switchToEpisode(currentIdx + 1);
+                // 仅更新状态，由 Effect 触发切换和保存
+                setCurrentEpisodeIndex(currentIdx + 1);
               }
             },
           },
@@ -426,10 +378,15 @@ export function usePlayer({
       });
 
       artPlayerRef.current.once("video:canplay", () => {
-        if (initialTime.current > 0) {
+        // 从store中获取播放记录
+        const playRecord = usePlayHistoryStore
+          .getState()
+          .getPlayRecord(videoDetail.source, videoDetail.id);
+        const initialTime = playRecord?.currentTime || 0;
+        if (initialTime > 0) {
           try {
             const duration = artPlayerRef.current.duration || 0;
-            let target = initialTime.current;
+            let target = initialTime;
             if (duration && target >= duration - 2) {
               target = Math.max(0, duration - 5);
             }
@@ -444,10 +401,10 @@ export function usePlayer({
 
       artPlayerRef.current.on("video:timeupdate", () => {
         const {skipConfig} = useSettingsStore.getState();
-
+        // 自动保存数据
         const now = Date.now();
         if (now - lastSaveTimeRef.current > 5000) {
-          savePlayProgress();
+          savePlayProgressEvent();
           lastSaveTimeRef.current = now;
         }
 
@@ -472,13 +429,13 @@ export function usePlayer({
               currentTime > duration + skipConfig.outro_time
             ) {
               artPlayerRef.current.notice.show = `Skipped outro (${formatTime(-skipConfig.outro_time)})`;
-              const currentIdx = playingEpisodeIndexRef.current;
+              const currentIdx = CurrentEpisodeIndexEvent();
               if (
                 videoDetail &&
                 videoDetail.episodes &&
                 currentIdx < videoDetail.episodes.length - 1
               ) {
-                switchToEpisode(currentIdx + 1);
+                setCurrentEpisodeIndex(currentIdx + 1);
               } else {
                 artPlayerRef.current.pause();
               }
@@ -488,19 +445,18 @@ export function usePlayer({
       });
 
       artPlayerRef.current.on("pause", () => {
-        savePlayProgress();
+        savePlayProgressEvent();
       });
 
       artPlayerRef.current.on("video:ended", () => {
-        const currentIdx = playingEpisodeIndexRef.current;
+        const currentIdx = CurrentEpisodeIndexEvent();
         if (
           videoDetail &&
           videoDetail.episodes &&
           currentIdx < videoDetail.episodes.length - 1
         ) {
-          savePlayProgress();
           setTimeout(() => {
-            switchToEpisode(currentIdx + 1);
+            setCurrentEpisodeIndex(currentIdx + 1);
           }, 1000);
         }
       });
@@ -527,35 +483,32 @@ export function usePlayer({
         }
       }
     };
-  }, [
-    videoDetail,
-    loading,
-    blockAdEnabledRef,
-    skipConfigRef,
-    initialEpisodeIndex,
-    initialTime,
-    switchToEpisode,
-    savePlayProgress,
-  ]);
+  }, [videoDetail, setCurrentEpisodeIndex]);
 
-  // 新增 effect: 监听 currentEpisodeIndex 变化，复用播放器
+  // 核心 Play Effect: 监听 currentEpisodeIndex 变化，统一执行切换
   useEffect(() => {
+    // 只在 currentEpisodeIndex 真正变化时才切换，避免首次挂载时重复切换
     if (
       artPlayerRef.current &&
-      currentEpisodeIndex !== playingEpisodeIndexRef.current
+      prevEpisodeIndexRef.current !== currentEpisodeIndex
     ) {
-      switchToEpisode(currentEpisodeIndex);
+      switchToEpisodeEvent(currentEpisodeIndex);
     }
-  }, [currentEpisodeIndex, switchToEpisode]);
+    // 更新上一次的索引
+    prevEpisodeIndexRef.current = currentEpisodeIndex;
+  }, [currentEpisodeIndex]);
 
   useEffect(() => {
     const handleKeyboardShortcuts = (e) => {
       if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")
         return;
 
+      // 每次按键时获取最新的 episodeIndex
+      const currentIdx = CurrentEpisodeIndexEvent();
+
       if (e.altKey && e.key === "ArrowLeft") {
-        if (currentEpisodeIndex > 0) {
-          switchToEpisode(currentEpisodeIndex - 1);
+        if (currentIdx > 0) {
+          setCurrentEpisodeIndex(currentIdx - 1);
           e.preventDefault();
         }
       }
@@ -564,9 +517,9 @@ export function usePlayer({
         if (
           videoDetail &&
           videoDetail.episodes &&
-          currentEpisodeIndex < videoDetail.episodes.length - 1
+          currentIdx < videoDetail.episodes.length - 1
         ) {
-          switchToEpisode(currentEpisodeIndex + 1);
+          setCurrentEpisodeIndex(currentIdx + 1);
           e.preventDefault();
         }
       }
@@ -625,21 +578,14 @@ export function usePlayer({
     return () => {
       document.removeEventListener("keydown", handleKeyboardShortcuts);
     };
-  }, [videoDetail, currentEpisodeIndex, switchToEpisode]);
+  }, [videoDetail, setCurrentEpisodeIndex]);
 
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      savePlayProgress();
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("beforeunload", savePlayProgressEvent);
     return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("beforeunload", savePlayProgressEvent);
     };
-  }, [savePlayProgress]);
+  }, []);
 
-  return {
-    artRef,
-    switchToEpisode,
-  };
+  return {artRef};
 }

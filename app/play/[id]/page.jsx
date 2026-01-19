@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams, useSearchParams } from "next/navigation";
+import { useState } from "react";
 import Link from "next/link";
 import { useVideoData } from "@/hooks/useVideoData";
 import { VideoPlayer } from "@/components/VideoPlayer";
@@ -13,19 +14,13 @@ export default function PlayerPage() {
   const searchParams = useSearchParams();
   const id = params.id;
   const source = searchParams.get("source");
-
+  const [currentEpisodeIndex, setCurrentEpisodeIndex] = useState(0);
   const {
     videoDetail,
     doubanActors,
     loading,
-    error,
-    currentEpisodeIndex,
-    setCurrentEpisodeIndex,
-    initialEpisodeIndex,
-    initialTime,
-    blockAdEnabledRef,
-    skipConfigRef,
-  } = useVideoData(id, source);
+    error
+  } = useVideoData(id, source, setCurrentEpisodeIndex);
 
   const handleEpisodeClick = (index) => {
     setCurrentEpisodeIndex(index);
@@ -64,15 +59,8 @@ export default function PlayerPage() {
           <VideoPlayer
             key={id}
             videoDetail={videoDetail}
-            loading={loading}
             currentEpisodeIndex={currentEpisodeIndex}
             setCurrentEpisodeIndex={setCurrentEpisodeIndex}
-            initialEpisodeIndex={initialEpisodeIndex}
-            initialTime={initialTime}
-            blockAdEnabledRef={blockAdEnabledRef}
-            skipConfigRef={skipConfigRef}
-            id={id}
-            source={source}
           />
 
           {/* Mobile Actions Bar (Visible only on mobile/tablet) */}

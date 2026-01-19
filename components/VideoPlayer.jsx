@@ -2,27 +2,13 @@ import { usePlayer } from "@/hooks/usePlayer";
 
 export function VideoPlayer({
   videoDetail,
-  loading,
   currentEpisodeIndex,
-  setCurrentEpisodeIndex,
-  initialEpisodeIndex,
-  initialTime,
-  blockAdEnabledRef,
-  skipConfigRef,
-  id,
-  source,
+  setCurrentEpisodeIndex
 }) {
   const { artRef } = usePlayer({
     videoDetail,
-    loading,
     currentEpisodeIndex,
-    setCurrentEpisodeIndex,
-    initialEpisodeIndex,
-    initialTime,
-    blockAdEnabledRef,
-    skipConfigRef,
-    id,
-    source,
+    setCurrentEpisodeIndex
   });
 
   return (
