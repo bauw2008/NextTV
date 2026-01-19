@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from "react";
-import { useSettingsStore } from "@/store/useSettingsStore";
-import { usePlayHistoryStore } from "@/store/usePlayHistoryStore";
-import { getVideoDetail } from "@/lib/cmsApi";
-import { scrapeDoubanDetails } from "@/lib/getDouban";
+import {useState, useEffect, useRef} from "react";
+import {useSettingsStore} from "@/store/useSettingsStore";
+import {usePlayHistoryStore} from "@/store/usePlayHistoryStore";
+import {getVideoDetail} from "@/lib/cmsApi";
+import {scrapeDoubanDetails} from "@/lib/getDouban";
 
 /**
  * Hook for fetching video data and managing video-related state
@@ -42,24 +42,41 @@ export function useVideoData(id, source) {
       setLoading(true);
 
       try {
-        const videoDetailData = await getVideoDetail(id, sourceConfig.name, sourceConfig.url);
+        const videoDetailData = await getVideoDetail(
+          id,
+          sourceConfig.name,
+          sourceConfig.url,
+        );
 
         const playHistory = usePlayHistoryStore.getState().playHistory;
-        const playRecord = playHistory.find((item) => item.source === source && item.id === id);
+        const playRecord = playHistory.find(
+          (item) => item.source === source && item.id === id,
+        );
 
         initialEpisodeIndex.current = playRecord?.currentEpisodeIndex ?? 0;
-        initialTime.current = playRecord?.currentTime && playRecord.currentTime > 5 ? playRecord.currentTime : 0;
+        initialTime.current =
+          playRecord?.currentTime && playRecord.currentTime > 5
+            ? playRecord.currentTime
+            : 0;
 
         let actorsData = [];
         if (videoDetailData.douban_id) {
-          const doubanResult = await scrapeDoubanDetails(videoDetailData.douban_id);
+          const doubanResult = await scrapeDoubanDetails(
+            videoDetailData.douban_id,
+          );
           if (doubanResult.code === 200 && doubanResult.data.actors) {
             actorsData = doubanResult.data.actors.map((actor) => ({
               ...actor,
-              avatar: actor.avatar.replace(/img\d+\.doubanio\.com/g, "img.doubanio.cmliussss.com"),
+              avatar: actor.avatar.replace(
+                /img\d+\.doubanio\.com/g,
+                "img.doubanio.cmliussss.com",
+              ),
             }));
           } else {
-            console.warn("Failed to fetch Douban actor data:", doubanResult.reason?.message);
+            console.warn(
+              "Failed to fetch Douban actor data:",
+              doubanResult.reason?.message,
+            );
           }
         } else {
           console.log("No Douban ID, cannot get danmaku");
@@ -70,17 +87,10 @@ export function useVideoData(id, source) {
         blockAdEnabledRef.current = enableRemoveAd;
         skipConfigRef.current = skipConfig;
 
-        if (enableRemoveAd) {
-          videoDetailData.episodes = videoDetailData.episodes.map((episode) => {
-            return "/api/filterad?url=" + episode;
-          });
-        }
-
         setVideoDetail(videoDetailData);
         setCurrentEpisodeIndex(initialEpisodeIndex.current);
         setDoubanActors(actorsData);
         setLoading(false);
-
       } catch (err) {
         console.error("Failed to load data:", err);
         setError("Failed to load data");
@@ -89,7 +99,7 @@ export function useVideoData(id, source) {
     }
 
     loadData();
-    console.log("数据加载运行了")
+    console.log("数据加载运行了");
   }, [id, source]);
 
   return {

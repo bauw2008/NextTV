@@ -5,9 +5,8 @@ import artplayerPluginDanmuku from "artplayer-plugin-danmuku";
 import artplayerPluginLiquidGlass from "@/lib/artplayer-plugin-liquid-glass";
 import {useSettingsStore} from "@/store/useSettingsStore";
 import {usePlayHistoryStore} from "@/store/usePlayHistoryStore";
-import {formatTime} from "@/lib/util";
+import {formatTime, filterAdsFromM3U8} from "@/lib/util";
 import {createDanmakuLoader} from "@/lib/danmakuApi";
-
 export function usePlayer({
   videoDetail,
   loading,
@@ -149,7 +148,28 @@ export function usePlayer({
       playingEpisodeIndexRef.current = initialEpisodeIndex.current;
 
       const {danmakuSources} = useSettingsStore.getState();
-
+      class CustomHlsJsLoader extends Hls.DefaultConfig.loader {
+        constructor(config) {
+          super(config);
+          const load = this.load.bind(this);
+          this.load = function (context, config, callbacks) {
+            // 拦截manifest和level请求
+            if (context.type === "manifest" || context.type === "level") {
+              const onSuccess = callbacks.onSuccess;
+              callbacks.onSuccess = function (response, stats, context) {
+                // 如果是m3u8文件，处理内容以移除广告分段
+                if (response.data && typeof response.data === "string") {
+                  // 过滤掉广告段 - 实现更精确的广告过滤逻辑
+                  response.data = filterAdsFromM3U8(response.data);
+                }
+                return onSuccess(response, stats, context, null);
+              };
+            }
+            // 执行原始load方法
+            load(context, config, callbacks);
+          };
+        }
+      }
       artPlayerRef.current = new Artplayer({
         container: artRef.current,
         url: currentUrl,
@@ -236,6 +256,9 @@ export function usePlayer({
               maxBufferLength: 30,
               backBufferLength: 30,
               maxBufferSize: 60 * 1000 * 1000,
+              loader: blockAdEnabledRef.current
+                ? CustomHlsJsLoader
+                : Hls.DefaultConfig.loader,
             });
 
             hls.loadSource(url);
@@ -266,7 +289,10 @@ export function usePlayer({
             });
           },
         },
-
+        icons: {
+          loading:
+            '<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDUwIDUwIj48cGF0aCBkPSJNMjUuMjUxIDYuNDYxYy0xMC4zMTggMC0xOC42ODMgOC4zNjUtMTguNjgzIDE4LjY4M2g0LjA2OGMwLTguMDcgNi41NDUtMTQuNjE1IDE0LjYxNS0xNC42MTVWNi40NjF6IiBmaWxsPSIjMDA5Njg4Ij48YW5pbWF0ZVRyYW5zZm9ybSBhdHRyaWJ1dGVOYW1lPSJ0cmFuc2Zvcm0iIGF0dHJpYnV0ZVR5cGU9IlhNTCIgZHVyPSIxcyIgZnJvbT0iMCAyNSAyNSIgcmVwZWF0Q291bnQ9ImluZGVmaW5pdGUiIHRvPSIzNjAgMjUgMjUiIHR5cGU9InJvdGF0ZSIvPjwvcGF0aD48L3N2Zz4=">',
+        },
         settings: [
           {
             html: "去广告",
